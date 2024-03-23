@@ -467,15 +467,13 @@ To start collecting Not Coins, you can use the following commands:
 🟡 `/stop` - Stop bot
 
 Get ready to gather those shiny 🟡 Not Coins! 🚀
-
-Coded By: @uPaSKaL ~ [GitHub](https://github.com/Poryaei)
                           """)
     
     elif text == '/info':
         await _sendMessage("""
-🤖 Bot Name: Not Coin Collector Bot
-💻 Author: Abolfazl Poryaei
-🌐 GitHub: [Poryaei](https://github.com/Poryaei)
+🤖 Bot Name: Notcoin Collector Bot
+💻 Author: CyberBusinessLabs
+🌐 Link: https://t.me/CyberBusinessLabs
         """)
     
     elif text == '/version':
