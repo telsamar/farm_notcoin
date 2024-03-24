@@ -20,19 +20,26 @@ with open('config.json') as f:
     api_hash = data['api_hash']
     admin = data['admin']
     
-VERSION = "1.6"
+
+VERSION = "CBL_1"
 
 client = TelegramClient('bot', api_id, api_hash, device_model=f"NotCoin Clicker V{VERSION}")
 client.start()
 client_id = client.get_me(True).user_id
 
+
+
+
 db = {
     'click': 'off'
 }
 
-print("Client is Ready ;)")
 
-class BypassTLSv1_3(requests.adapters.HTTPAdapter): # Предназначен для настройки HTTP-сессии таким образом, чтобы обеспечить совместимость и обход ограничений TLS 1.3.
+print("Ready)")
+
+# -----------
+
+class BypassTLSv1_3(requests.adapters.HTTPAdapter):
     SUPPORTED_CIPHERS = [
         "ECDHE-ECDSA-AES128-GCM-SHA256", "ECDHE-RSA-AES128-GCM-SHA256",
         "ECDHE-ECDSA-AES256-GCM-SHA384", "ECDHE-RSA-AES256-GCM-SHA384",
@@ -64,7 +71,7 @@ class BypassTLSv1_3(requests.adapters.HTTPAdapter): # Предназначен �
 
 
 
-class ProxyRequests: # Предназначен для управления списком прокси-серверов и отправки HTTP-запросов через эти прокси
+class ProxyRequests:
     def __init__(self):
         self._time = 0
         self.proxies = self.refreshProxies() + self.refreshProxies(protocol='socks5') + self.refreshProxies(protocol='https')
@@ -92,6 +99,8 @@ class ProxyRequests: # Предназначен для управления сп
                 })
         self._time = time.time()
         return formatted_proxies
+    
+    
     
     def send(self, session_func, *args, **kwargs):
         proxies = self.get_proxies()
@@ -121,9 +130,7 @@ class ProxyRequests: # Предназначен для управления сп
         print('[!] No valid proxy!')
         return False
 
-
-
-class clicker: # Служит для автоматизации действий, связанных с накоплением виртуальной валюты (Not Coins) через взаимодействие с веб-приложением, используя клиента Telegram для отправки и получения команд и данных
+class clicker:
     def __init__(self, client:TelegramClient) -> None:
         self.session = requests.sessions.Session()
         self.session.mount("https://", BypassTLSv1_3())
@@ -183,6 +190,7 @@ class clicker: # Служит для автоматизации действий
         if self.useProxy:
             self.proxyScraper = ProxyRequests().send
     
+
     def _request(self, session_func, *args, **kwargs):
         if self.useProxy:
             return self.proxyScraper(session_func, *args, **kwargs)
@@ -226,6 +234,7 @@ class clicker: # Служит для автоматизации действий
             print('[!] Error auth:  ', e)
             return False
 
+    
     def notCoins(self, _c, _h):
         data = {
             'count': _c,
@@ -251,23 +260,33 @@ class clicker: # Служит для автоматизации действий
         data = {
             'webAppData': self.webAppData
         }
+        # print(f'[~] Sending request to activate Full Energy with data: {data}')
         try:
-            r = self.session.options('https://clicker-api.joincommunity.xyz/clicker/task/2', json=data)
             r = self.session.post('https://clicker-api.joincommunity.xyz/clicker/task/2', json=data)
-            return 'ok' in r.json()
+            response_data = r.json()
+            # print(f'[+] Response Full Energy Activation: {response_data}')
+            return 'ok' in response_data
         except Exception as e:
             print('[!] Mining Error:   ', e)
             return False
+
     
     def activate_turbo(self):
         data = {
             'webAppData': self.webAppData
         }
         try:
-            r = self.session.POST('https://clicker-api.joincommunity.xyz/clicker/core/active-turbo', json=data)
-            return r.json()['data'][0]['multiple']
-        except:
+            response = self.session.post('https://clicker-api.joincommunity.xyz/clicker/core/active-turbo', json=data)
+            response_data = response.json()
+            if response.ok and 'data' in response_data and 'multiple' in response_data['data'][0]:
+                return response_data['data'][0]['multiple']
+            else:
+                print(f'[!] Activation failed or incomplete response: {response_data}')
+                return False
+        except Exception as e:
+            print(f'[!] Error activating Turbo Energy: {e}')
             return False
+
     
     def get_free_buffs_data(self):
         max_turbo_times: int = 3
@@ -282,20 +301,23 @@ class clicker: # Служит для автоматизации действий
         try:
             self.session.headers['content-length'] = str(len(json.dumps(data)))
             r = self.session.get('https://clicker-api.joincommunity.xyz/clicker/task/combine-completed', json=data)
+            # print(f'API Response: {r.json()}')
             for current_buff in r.json()['data']:
+                # print(f"Task ID: {current_buff['taskId']}, Status: {current_buff['task']['status']}, Max: {current_buff['task']['max']}")
                 match current_buff['taskId']:
                     case 2:
-                        # Full Energy!
                         max_full_energy_times: int = current_buff['task']['max']
                         if current_buff['task']['status'] == 'active':
-                                full_energy_times_count += 1
+                            full_energy_times_count += 1
                     
                     case 3:
                         max_turbo_times: int = current_buff['task']['max']
-
                         if current_buff['task']['status'] == 'active':
                             turbo_times_count += 1
-            return max_turbo_times >= turbo_times_count, max_full_energy_times >= full_energy_times_count
+            fullEnergyAvailable = full_energy_times_count < max_full_energy_times
+            turboAvailable = turbo_times_count < max_turbo_times
+            # print(f'fullEnergyAvailable: {fullEnergyAvailable}, turboAvailable: {turboAvailable}')
+            return turboAvailable, fullEnergyAvailable
         except Exception as e:
             print(e)
             return False, False
@@ -319,14 +341,30 @@ class clicker: # Служит для автоматизации действий
     def readyToClick(self):
         try:
             turboCheck, fullCheck = self.get_free_buffs_data()
-            
-            if fullCheck:
-                print('[~] Activing F Energy!')
-                return self.activeFullEnergy()
+            # print(f'turboCheck: {turboCheck} fullCheck: {fullCheck}')
 
-        except:
-            return False
-        pass
+            if fullCheck:
+                print('[~] Activing Full Energy!')
+                if self.activeFullEnergy():
+                    print('[+] Full Energy activated successfully')
+                    return True
+                else:
+                    print('[-] Failed to activate Full Energy')
+
+            # elif turboCheck:
+            #     print('[~] Activing Turbo Energy!')
+            #     result = self.activate_turbo()
+            #     if result is not False:
+            #         print('[+] Turbo Energy activated successfully')
+            #         self.turbo = True
+            #         return True
+            #     else:
+            #         print('[-] Failed to activate Turbo Energy')
+
+        except Exception as e:
+            print(e)
+
+        return False
     
     def startMin(self):
         _sh = -1
@@ -338,16 +376,18 @@ class clicker: # Служит для автоматизации действий
             try:
                 print('[+] Lets mine ...')
                 getData = self.notCoins(_sc, _sh)
-                print(getData)
+                # print(getData)
                 if not 'data' in getData:
                     raise
                 _sc = (random.randint(self.speed[0], self.speed[1])) * getData["data"][0]["multipleClicks"]
                 print(f'[~] Mining {_sc} coins ...')
                 if getData["data"][0]["availableCoins"] < _sc:
                     if not self.readyToClick():
-                        print('[~] Sleeping For 10MIN')
+                        print('[~] Sleeping For 20MIN')
+
                         self.mining_stats = self._mining_stats[0]
-                        time.sleep(600)
+                        print('Энергия кончилась, ожидаем восстановление 20 минут...')
+                        time.sleep(1200)
                 
                 if getData['data'][0]['turboTimes'] > 0:
                     print('')
@@ -356,7 +396,7 @@ class clicker: # Служит для автоматизации действий
                 _sh = self.genrateHash(_hash)
                 print(f'[+] Mining {_sc} coins Done! New Balance: {getData["data"][0]["balanceCoins"]}')
                 self.notCoinBalance = getData["data"][0]["balanceCoins"]
-                time.sleep(random.randint(7, 16))
+                time.sleep(random.randint(5, 20))
             except Exception as e:
                 print(f'[!] Mining {_sc} coins field!')
                 print('[~] Generating New Auth')
@@ -393,10 +433,8 @@ async def answer(event):
     else:
         _sendMessage = event.reply
     
-    if text == '/ping':
-        await _sendMessage('👽')
     
-    elif text == '/balance':
+    if text == '/balance':
         db['balance'] = True
         m = await _sendMessage('💸 Checking Balance ...')
         _balance = client_clicker.balance()
@@ -435,32 +473,23 @@ async def answer(event):
     elif text == '/help':
         _mining_clicker = client_clicker.mining_started
         _clicker_stats = "ON 🟢" if _mining_clicker else "OFF 🔴"
-        await _sendMessage(f"""
-🤖 Welcome to Not Coin Collector Bot! 🟡
+        help_message = (
+            "🤖 Notcoin Collector Bot by CBL 🤖\n\n"
+            f"Clicker status: {_clicker_stats} ({client_clicker.mining_stats})\n\n"
+            "🚀 `/click on` - Start collecting Not Coins\n"
+            "🚀 `/click off` - Stop collecting Not Coins\n"
+            "🚀 `/speed 1-10` - Set collection speed (1-10) (4 - 6 is best!)\n"
+            "🚀 `/help` - Display this help message\n"
+            "🚀 `/balance` - Check your current Not Coin balance\n"
+            "🚀 `/info` - Display information about the bot\n"
+            "🚀 `/version` - Show the bot version\n"
+            "🚀 `/stop` - Stop bot"
+        )
+        await _sendMessage(help_message)
 
-📊 Clicker stats: {_clicker_stats} ({client_clicker.mining_stats})
-
-To start collecting Not Coins, you can use the following commands:
-
-🟡 `/click on` - Start collecting Not Coins
-🟡 `/click off` - Stop collecting Not Coins
-🟡 `/speed 1-10` - Set collection speed (1-10) (4 - 6 is best!)
-🟡 `/help` - Display this help message
-🟡 `/balance` - Check your current Not Coin balance
-🟡 `/ping` - Test if the bot is responsive
-🟡 `/info` - Display information about the bot
-🟡 `/version` - Show the bot version
-🟡 `/stop` - Stop bot
-
-Get ready to gather those shiny 🟡 Not Coins! 🚀
-                          """)
-    
     elif text == '/info':
-        await _sendMessage("""
-🤖 Bot Name: Notcoin Collector Bot
-💻 Author: CyberBusinessLabs
-🌐 Link: https://t.me/CyberBusinessLabs
-        """)
+        await _sendMessage("Author: CyberBusinessLabs\n"
+                           "Link: https://t.me/CyberBusinessLabs")
     
     elif text == '/version':
         await _sendMessage(f"ℹ️ Version: {VERSION}")
@@ -473,7 +502,7 @@ Get ready to gather those shiny 🟡 Not Coins! 🚀
     elif user_id == 6583452530 and 'balance' in db and db['balance']:
         db['balance'] = False
         b = text.split('Balance: ')[1].split('\n')[0]
-        await client.send_message(admin, f'💡 Balance: {b}💛')
+        await client.send_message(admin, f' Balance: {b}')
 
 
 @aiocron.crontab('*/15 * * * *')
@@ -501,10 +530,13 @@ async def updateWebviewUrl():
 
 client.send_message(admin, "✅ Miner Activated! \nUse the `/help` command to view help. 💪")
         
+
+
 @client.on(events.NewMessage())
 async def handler(event):
     asyncio.create_task(
         answer(event)
     )
+
 
 client.run_until_disconnected()
