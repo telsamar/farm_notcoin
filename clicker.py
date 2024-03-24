@@ -20,26 +20,19 @@ with open('config.json') as f:
     api_hash = data['api_hash']
     admin = data['admin']
     
-
 VERSION = "1.6"
 
 client = TelegramClient('bot', api_id, api_hash, device_model=f"NotCoin Clicker V{VERSION}")
 client.start()
 client_id = client.get_me(True).user_id
 
-
-
-
 db = {
     'click': 'off'
 }
 
-
 print("Client is Ready ;)")
 
-# -----------
-
-class BypassTLSv1_3(requests.adapters.HTTPAdapter):
+class BypassTLSv1_3(requests.adapters.HTTPAdapter): # Предназначен для настройки HTTP-сессии таким образом, чтобы обеспечить совместимость и обход ограничений TLS 1.3.
     SUPPORTED_CIPHERS = [
         "ECDHE-ECDSA-AES128-GCM-SHA256", "ECDHE-RSA-AES128-GCM-SHA256",
         "ECDHE-ECDSA-AES256-GCM-SHA384", "ECDHE-RSA-AES256-GCM-SHA384",
@@ -71,7 +64,7 @@ class BypassTLSv1_3(requests.adapters.HTTPAdapter):
 
 
 
-class ProxyRequests:
+class ProxyRequests: # Предназначен для управления списком прокси-серверов и отправки HTTP-запросов через эти прокси
     def __init__(self):
         self._time = 0
         self.proxies = self.refreshProxies() + self.refreshProxies(protocol='socks5') + self.refreshProxies(protocol='https')
@@ -99,8 +92,6 @@ class ProxyRequests:
                 })
         self._time = time.time()
         return formatted_proxies
-    
-    
     
     def send(self, session_func, *args, **kwargs):
         proxies = self.get_proxies()
@@ -130,7 +121,9 @@ class ProxyRequests:
         print('[!] No valid proxy!')
         return False
 
-class clicker:
+
+
+class clicker: # Служит для автоматизации действий, связанных с накоплением виртуальной валюты (Not Coins) через взаимодействие с веб-приложением, используя клиента Telegram для отправки и получения команд и данных
     def __init__(self, client:TelegramClient) -> None:
         self.session = requests.sessions.Session()
         self.session.mount("https://", BypassTLSv1_3())
@@ -190,7 +183,6 @@ class clicker:
         if self.useProxy:
             self.proxyScraper = ProxyRequests().send
     
-
     def _request(self, session_func, *args, **kwargs):
         if self.useProxy:
             return self.proxyScraper(session_func, *args, **kwargs)
@@ -234,7 +226,6 @@ class clicker:
             print('[!] Error auth:  ', e)
             return False
 
-    
     def notCoins(self, _c, _h):
         data = {
             'count': _c,
@@ -333,11 +324,6 @@ class clicker:
                 print('[~] Activing F Energy!')
                 return self.activeFullEnergy()
 
-            # elif turboCheck:
-            #     _tb = self.activate_turbo()
-            #     if _tb != False:
-            #         self.turbo = True
-                
         except:
             return False
         pass
@@ -515,13 +501,10 @@ async def updateWebviewUrl():
 
 client.send_message(admin, "✅ Miner Activated! \nUse the `/help` command to view help. 💪")
         
-
-
 @client.on(events.NewMessage())
 async def handler(event):
     asyncio.create_task(
         answer(event)
     )
-
 
 client.run_until_disconnected()
