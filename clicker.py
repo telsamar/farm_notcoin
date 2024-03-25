@@ -182,8 +182,7 @@ class clicker:
         self.startTime = time.time()
         self.checkTasksTime = 0
         self.notCoinBalance = 0
-        self.speed = (7, 20)
-        self.turbo = False
+        self.speed = (5, 15)
         self.useProxy = True
         self.proxyScraper = self.session
         self.proxies = {}
@@ -271,28 +270,7 @@ class clicker:
             return False
 
     
-    def activate_turbo(self):
-        data = {
-            'webAppData': self.webAppData
-        }
-        try:
-            response = self.session.post('https://clicker-api.joincommunity.xyz/clicker/core/active-turbo', json=data)
-            response_data = response.json()
-            if response.ok and 'data' in response_data and 'multiple' in response_data['data'][0]:
-                return response_data['data'][0]['multiple']
-            else:
-                print(f'[!] Activation failed or incomplete response: {response_data}')
-                return False
-        except Exception as e:
-            print(f'[!] Error activating Turbo Energy: {e}')
-            return False
-
-    
     def get_free_buffs_data(self):
-        max_turbo_times: int = 3
-        max_full_energy_times: int = 3
-
-        turbo_times_count: int = 0
         full_energy_times_count: int = 0
         
         data = {
@@ -310,17 +288,12 @@ class clicker:
                         if current_buff['task']['status'] == 'active':
                             full_energy_times_count += 1
                     
-                    case 3:
-                        max_turbo_times: int = current_buff['task']['max']
-                        if current_buff['task']['status'] == 'active':
-                            turbo_times_count += 1
             fullEnergyAvailable = full_energy_times_count < max_full_energy_times
-            turboAvailable = turbo_times_count < max_turbo_times
-            # print(f'fullEnergyAvailable: {fullEnergyAvailable}, turboAvailable: {turboAvailable}')
-            return turboAvailable, fullEnergyAvailable
+            print(f'fullEnergyAvailable: {fullEnergyAvailable}')
+            return fullEnergyAvailable
         except Exception as e:
             print(e)
-            return False, False
+            return False
     
     def genrateHash(self, _hash):
         def _run_js(string):
@@ -340,8 +313,8 @@ class clicker:
     
     def readyToClick(self):
         try:
-            turboCheck, fullCheck = self.get_free_buffs_data()
-            # print(f'turboCheck: {turboCheck} fullCheck: {fullCheck}')
+            fullCheck = self.get_free_buffs_data()
+            print(f' fullCheck: {fullCheck}')
 
             if fullCheck:
                 print('[~] Activing Full Energy!')
@@ -350,21 +323,11 @@ class clicker:
                     return True
                 else:
                     print('[-] Failed to activate Full Energy')
-
-            # elif turboCheck:
-            #     print('[~] Activing Turbo Energy!')
-            #     result = self.activate_turbo()
-            #     if result is not False:
-            #         print('[+] Turbo Energy activated successfully')
-            #         self.turbo = True
-            #         return True
-            #     else:
-            #         print('[-] Failed to activate Turbo Energy')
+                    return False
 
         except Exception as e:
             print(e)
-
-        return False
+            return False
     
     def startMin(self):
         _sh = -1
@@ -383,11 +346,11 @@ class clicker:
                 print(f'[~] Mining {_sc} coins ...')
                 if getData["data"][0]["availableCoins"] < _sc:
                     if not self.readyToClick():
-                        print('[~] Sleeping For 20MIN')
-
                         self.mining_stats = self._mining_stats[0]
-                        print('Энергия кончилась, ожидаем восстановление 20 минут...')
-                        time.sleep(1200)
+                        wait_time = random.randint(600, 1800)
+                        print(f'Энергия кончилась, ожидаем восстановление {wait_time//60} минут...')
+                        time.sleep(wait_time)
+                        self.mining_stats = self._mining_stats[1]
                 
                 if getData['data'][0]['turboTimes'] > 0:
                     print('')

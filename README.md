@@ -8,3 +8,7 @@ This project contains code for a Telegram bot and background clicker that intera
 
 ## Prerequisites
 - A Telegram API ID and hash, admin id
+
+nohup python clicker.py > clicker.log 2> clicker.err &
+tail -f clicker.log
+tail -f clicker.err
