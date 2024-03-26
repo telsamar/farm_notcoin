@@ -1,14 +1,14 @@
-# NotCoin Clicker Bot
+# NotCoin кликер
 
-A Python bot and automated clicker for accumulating NotCoins on Telegram.
+## Что необходимо
+- Telegram API ID, hash, id админа
 
-## About
+## Как запускать на своем сервере
 
-This project contains code for a Telegram bot and background clicker that interacts with the NotCoin Bot to automatically collect NotCoins on your behalf. It runs continuously in the background while your collection is enabled.
+-nohup python clicker.py > clicker.log 2> clicker.err &
+-tail -f clicker.log
+-tail -f clicker.err
 
-## Prerequisites
-- A Telegram API ID and hash, admin id
+##  Предупреждение
 
-nohup python clicker.py > clicker.log 2> clicker.err &
-tail -f clicker.log
-tail -f clicker.err
+За время работы (11 дней) аккаунт не было заблокирован, однако, мы не можем исключать такой возможности. 
