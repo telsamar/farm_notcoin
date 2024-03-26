@@ -20,7 +20,6 @@ with open('config.json') as f:
     api_hash = data['api_hash']
     admin = data['admin']
     
-
 VERSION = "CBL_1"
 
 client = TelegramClient('bot', api_id, api_hash, device_model=f"NotCoin Clicker V{VERSION}")
@@ -28,12 +27,9 @@ client.start()
 client_id = client.get_me(True).user_id
 
 
-
-
 db = {
     'click': 'off'
 }
-
 
 print("Ready)")
 
@@ -68,67 +64,67 @@ class BypassTLSv1_3(requests.adapters.HTTPAdapter):
         kwargs["source_address"] = None
         return super().proxy_manager_for(*args, **kwargs)
 
-
-
-
 class ProxyRequests:
     def __init__(self):
         self._time = 0
-        self.proxies = self.refreshProxies() + self.refreshProxies(protocol='socks5') + self.refreshProxies(protocol='https')
+        self.proxies = self.refresh_all_proxies()
     
     def get_proxies(self):
         if time.time() - self._time > 30:
-            self.proxies = self.refreshProxies() + self.refreshProxies(protocol='socks5') + self.refreshProxies(protocol='https')
-        
+            self.proxies = self.refresh_all_proxies()
         return self.proxies
     
-    def refreshProxies(self, protocol='socks4', timeout=7000):
-        try:
-            proxies_data = requests.get(f"https://poeai.click/proxy.php/v2/?request=getproxies&protocol={protocol}&timeout={timeout}&country=all&ssl=all&anonymity=all").text
-        except:
-            return False
-        
-        proxies_list = proxies_data.split('\n')
-        formatted_proxies = []
-
-        for p in proxies_list:
-            if p.strip():
-                formatted_proxies.append({
-                    'http': f'{protocol}://{p.strip().replace("/r", "")}',
-                    'https': f'{protocol}://{p.strip().replace("/r", "")}'
-                })
+    def refresh_all_proxies(self):
+        protocols = ['socks4', 'socks5', 'https']
+        all_proxies = []
+        for protocol in protocols:
+            proxies = self.refreshProxies(protocol)
+            if proxies:
+                all_proxies.extend(proxies)
         self._time = time.time()
-        return formatted_proxies
+        return all_proxies
     
-    
-    
+    def refreshProxies(self, protocol, timeout=7000):
+        try:
+            url = f"https://poeai.click/proxy.php/v2/?request=getproxies&protocol={protocol}&timeout={timeout}&country=all&ssl=all&anonymity=all"
+            proxies_data = requests.get(url).text
+            return [
+                {'http': f'{protocol}://{p}', 'https': f'{protocol}://{p}'}
+                for p in proxies_data.split('\n') if p.strip()
+            ]
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching proxies: {e}")
+            return []
+
     def send(self, session_func, *args, **kwargs):
         proxies = self.get_proxies()
         if not proxies:
-            return "Failure"
+            print("[!] No proxies loaded, attempting without proxy")
+            return session_func(*args, **kwargs)
 
         def check_proxy(proxy):
             try:
+                print(f"[+] Attempting with proxy: {proxy}")
                 response = session_func(*args, proxies=proxy, timeout=10, **kwargs)
+                if response:
+                    print(f"[+] Successfully connected with proxy: {proxy}")
                 return response
             except:
+                print(f"[-] Failed to connect with proxy: {proxy}")
                 return False
 
-        futures = []
-        results = []
-        executor = ThreadPoolExecutor(max_workers=20)
-        for proxy in proxies:
-            f = executor.submit(check_proxy, proxy)
-            futures.append(f)
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            futures = {executor.submit(check_proxy, proxy): proxy for proxy in proxies}
 
-        for f in futures:
-            result = f.result()
-            if result:
-                executor.shutdown(False, cancel_futures=True)
-                return result
-        
-        print('[!] No valid proxy!')
-        return False
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    used_proxy = futures[future]
+                    print(f"[+] Request successful with proxy: {used_proxy}")
+                    return result
+
+        print('[!] No valid proxy, attempting without proxy')
+        return session_func(*args, **kwargs)
 
 class clicker:
     def __init__(self, client:TelegramClient) -> None:
@@ -189,7 +185,6 @@ class clicker:
         if self.useProxy:
             self.proxyScraper = ProxyRequests().send
     
-
     def _request(self, session_func, *args, **kwargs):
         if self.useProxy:
             return self.proxyScraper(session_func, *args, **kwargs)
@@ -233,7 +228,6 @@ class clicker:
             print('[!] Error auth:  ', e)
             return False
 
-    
     def notCoins(self, _c, _h):
         data = {
             'count': _c,
@@ -269,7 +263,6 @@ class clicker:
             print('[!] Mining Error:   ', e)
             return False
 
-    
     def get_free_buffs_data(self):
         full_energy_times_count: int = 0
         
@@ -379,8 +372,6 @@ class clicker:
     def balance(self):
         return self.profile()
     
-
-
 client_clicker = clicker(client)
 
 async def answer(event):
@@ -467,7 +458,6 @@ async def answer(event):
         b = text.split('Balance: ')[1].split('\n')[0]
         await client.send_message(admin, f' Balance: {b}')
 
-
 @aiocron.crontab('*/15 * * * *')
 async def updateWebviewUrl():
     global client_clicker
@@ -490,16 +480,11 @@ async def updateWebviewUrl():
             print('[!] Update Error:  ', e)
             await asyncio.sleep(10)
 
-
 client.send_message(admin, "✅ Miner Activated! \nUse the `/help` command to view help. 💪")
         
-
-
 @client.on(events.NewMessage())
 async def handler(event):
     asyncio.create_task(
         answer(event)
     )
-
-
 client.run_until_disconnected()
